@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, Shield, CheckCircle } from "lucide-react";
+import { Wallet, Shield, CheckCircle, AlertCircle } from "lucide-react";
+import { ethers } from "ethers";
 
 interface WalletConnectionProps {
   onConnect: (wallet: string, address: string) => void;
@@ -13,19 +14,56 @@ interface WalletConnectionProps {
 
 export const WalletConnection = ({ onConnect, isConnected, connectedWallet, connectedAddress }: WalletConnectionProps) => {
   const [isConnecting, setIsConnecting] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleConnect = async (walletType: string) => {
     setIsConnecting(walletType);
+    setError(null);
     
-    // Simulate wallet connection delay
-    setTimeout(() => {
-      const mockAddress = walletType === 'metamask' 
-        ? '0x742d35Cc6634C0532925a3b8D746C10D9DC00000'
-        : 'H4KJz8fV9Tx3y7aP8K9nQ2wR5tE6mL3pB7gS1vN8cX9z';
-      
-      onConnect(walletType, mockAddress);
+    try {
+      if (walletType === 'metamask') {
+        // Check if MetaMask is installed
+        if (typeof window.ethereum === 'undefined') {
+          throw new Error('MetaMask is not installed. Please install MetaMask extension.');
+        }
+
+        // Request account access
+        const accounts = await window.ethereum.request({
+          method: 'eth_requestAccounts',
+        });
+
+        if (accounts.length === 0) {
+          throw new Error('No accounts found. Please make sure MetaMask is unlocked.');
+        }
+
+        // Get the connected account
+        const address = accounts[0];
+        
+        // Switch to Ethereum mainnet (optional)
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0x1' }], // Ethereum mainnet
+          });
+        } catch (switchError: any) {
+          // Chain doesn't exist or user rejected
+          console.log('Could not switch to Ethereum mainnet:', switchError);
+        }
+
+        onConnect(walletType, address);
+      } else {
+        // Keep mock for Phantom
+        const mockAddress = 'H4KJz8fV9Tx3y7aP8K9nQ2wR5tE6mL3pB7gS1vN8cX9z';
+        setTimeout(() => {
+          onConnect(walletType, mockAddress);
+        }, 1000);
+      }
+    } catch (error: any) {
+      console.error('Wallet connection error:', error);
+      setError(error.message || 'Failed to connect wallet');
+    } finally {
       setIsConnecting(null);
-    }, 2000);
+    }
   };
 
   if (isConnected) {
@@ -68,7 +106,15 @@ export const WalletConnection = ({ onConnect, isConnected, connectedWallet, conn
           Choose your preferred wallet to get started with decentralized identity
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-4">
+      <CardContent className="space-y-4">
+        {error && (
+          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-destructive" />
+            <span className="text-sm text-destructive">{error}</span>
+          </div>
+        )}
+        
+        <div className="grid gap-4">
         <Button
           variant="wallet"
           onClick={() => handleConnect('metamask')}
@@ -106,6 +152,7 @@ export const WalletConnection = ({ onConnect, isConnected, connectedWallet, conn
             </div>
           )}
         </Button>
+        </div>
       </CardContent>
     </Card>
   );
