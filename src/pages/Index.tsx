@@ -28,6 +28,7 @@ interface ReputationData {
 
 const Index = () => {
   const [currentStep, setCurrentStep] = useState(0);
+  const [showWorkflow, setShowWorkflow] = useState(false);
   const [isWalletConnected, setIsWalletConnected] = useState(false);
   const [connectedWallet, setConnectedWallet] = useState<string>("");
   const [walletAddress, setWalletAddress] = useState<string>("");
@@ -112,6 +113,7 @@ const Index = () => {
   };
 
   const handleGetStarted = () => {
+    setShowWorkflow(true);
     setCurrentStep(0);
     // Scroll to the workflow section
     setTimeout(() => {
@@ -119,13 +121,13 @@ const Index = () => {
     }, 100);
   };
 
-  const showHero = currentStep === 0 && !isWalletConnected;
+  const showHero = !showWorkflow && !isWalletConnected;
 
   return (
     <div className="min-h-screen">
       {showHero && <HeroSection onGetStarted={handleGetStarted} />}
       
-      {(!showHero || currentStep > 0) && (
+      {showWorkflow && (
         <div id="workflow" className="container mx-auto px-6 py-12">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12">
